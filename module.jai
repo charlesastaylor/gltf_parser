@@ -308,6 +308,7 @@ gltf_parse_string :: (gltf_buffer: string) -> GLTF_Data {
     defer array_add(*data.images, image);
 
     image.uri         = get_string(image_parsed, "uri");
+    image.name        = get_string(image_parsed, "name");
     image.mime_type   = get_string(image_parsed, "mimeType");
     image.data        = get_string(image_parsed, "data");
 
@@ -1038,6 +1039,8 @@ GLTF_Texture :: struct {
 GLTF_Image :: struct {
   // The URI (or IRI) of the image.
   uri : string;
+  // Optional, user-defined and not necessarily unique.
+  name : string;
   // The image’s media type.
   // This field must be defined when bufferView is defined.
   mime_type : string;
