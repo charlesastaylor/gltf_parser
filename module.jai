@@ -298,6 +298,14 @@ gltf_parse_string :: (gltf_buffer: string) -> GLTF_Data {
     defer array_add(*data.textures, texture);
     texture.sampler = get_int(texture_parsed, "sampler", -1);
     texture.source  = get_int(texture_parsed, "source", -1);
+
+    // @Hack If source is -1 check for KHR_texture_basisu extension which defines source separately
+    // @TODO(Charles): Handle the KHR_texture_basisu properly. Probalby not that hard, and good thing to contribute back!
+    if texture.source == -1 {
+      extensions := get(texture_parsed, "extensions", .OBJECT);
+      basisu     := get(extensions, "KHR_texture_basisu", .OBJECT);
+      texture.source = get_int(basisu, "source");
+    }
   }
 
 
