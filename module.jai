@@ -15,7 +15,7 @@ GLTF_Data :: struct {
   samplers     : [..] GLTF_Sampler;
   materials    : [..] GLTF_Material;
   cameras      : [..] GLTF_Camera;
-  lights       : [..] GLTF_Light;
+  lights       : [..] GLTF_Light; // :LightExtension 
   animations   : [..] GLTF_Animation;
 
   using meta : struct {
@@ -79,16 +79,19 @@ gltf_parse_string :: (gltf_buffer: string) -> GLTF_Data {
 
     rotation, has_rotation := get_array(node_parsed, "rotation");
     if has_rotation {
+      node.has_rotation = true;
       for val: rotation node.rotation[it_index] = parse_float(val);
     }
 
     scale, has_scale := get_array(node_parsed, "scale");
     if has_scale {
+      node.has_scale = true;
       for val: scale node.scale[it_index] = parse_float(val);
     }
 
     translation, has_trans := get_array(node_parsed, "translation");
     if has_trans {
+      node.has_translation = true;
       for val: translation node.translation[it_index] = parse_float(val);
     }
 
@@ -99,6 +102,7 @@ gltf_parse_string :: (gltf_buffer: string) -> GLTF_Data {
       for val: children array_add(*node.children, parse_int(val));
     }
 
+    // :LightExtension
     extensions, has_extension := get(node_parsed, "extensions", .OBJECT);
     if has_extension {
       khr_lights, has_khr_l := get(extensions, "KHR_lights_punctual", .OBJECT);
@@ -294,6 +298,14 @@ gltf_parse_string :: (gltf_buffer: string) -> GLTF_Data {
     defer array_add(*data.textures, texture);
     texture.sampler = get_int(texture_parsed, "sampler", -1);
     texture.source  = get_int(texture_parsed, "source", -1);
+
+    // @Hack If source is -1 check for KHR_texture_basisu extension which defines source separately
+    // @TODO(Charles): Handle the KHR_texture_basisu properly. Probalby not that hard, and good thing to contribute back!
+    if texture.source == -1 {
+      extensions := get(texture_parsed, "extensions", .OBJECT);
+      basisu     := get(extensions, "KHR_texture_basisu", .OBJECT);
+      texture.source = get_int(basisu, "source");
+    }
   }
 
 
@@ -308,6 +320,7 @@ gltf_parse_string :: (gltf_buffer: string) -> GLTF_Data {
     defer array_add(*data.images, image);
 
     image.uri         = get_string(image_parsed, "uri");
+    image.name        = get_string(image_parsed, "name");
     image.mime_type   = get_string(image_parsed, "mimeType");
     image.data        = get_string(image_parsed, "data");
 
@@ -791,41 +804,39 @@ read_buffer_from_accessor :: (gltf_data: *GLTF_Data, accessor: GLTF_Accessor, li
 // When a node is targeted for animation, referenced by
 // an animation.channel.target, matrix must not be present.
 GLTF_Node :: struct {
-  // The user-defined name of this object.
-  name : string;
-  // The index of the node's parent.
-  // A node is called a root node when it doesn’t have a parent.
-  parent := -1;
+  //
+  // Members that are part of spec
+  //
+
+  camera := -1;       // The index of the camera referenced by this node.
+  children: [..] int; // The indices of this node’s children.
+  skin := -1;         // The index of the skin referenced by this node.
+  matrix := float.[0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]; // A floating-point 4x4 transformation matrix stored in column-major order.
+  mesh := -1;         // The index of the mesh in this node.
+  rotation    := float.[0, 0, 0, 1]; // The node’s unit quaternion rotation in the order (x, y, z, w), where w is the scalar.
+  scale       := float.[1, 1, 1];    // The node’s non-uniform scale, given as the scaling factors along the x, y, and z axes.
+  translation := float.[0, 0, 0];    // The node’s translation along the x, y, and z axes.
+  // weights := -1;
+  name: string;        // The user-defined name of this object.
+  // extensions: JSON_Object
+  // extras: JSON_Object
+  
+
+  //
+  // Additional members added for convenience, or to handle extensions etc
+  //
+
+  // Matrix, rotation, etc are optional in spec. So we can tell if they were present or not we have bools.
+  has_matrix      := false;
+  has_rotation    := false;
+  has_scale       := false;
+  has_translation := false;
+
+  parent := -1; // The index of the node's parent. A node is called a root node when it doesn’t have a parent.
   world_transform := Matrix4_Identity;
   local_transform := Matrix4_Identity;
-  // The index of the mesh in this node.
-  mesh   := -1;
-  // The index of the camera referenced by this node.
-  camera := -1;
-  // The index of the skin referenced by this node.
-  skin   := -1;
-  // The indices of this node’s children.
-  children : [..] int;
-  // A floating-point 4x4 transformation matrix stored in column-major order.
-  has_matrix := false;
-  matrix     := float.[0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
-  // The node’s unit quaternion rotation in the order (x, y, z, w),
-  // where w is the scalar.
-  has_rotation := false;
-  rotation     := float.[0, 0, 0, 1];
-  // The node’s non-uniform scale, given as the scaling factors
-  // along the x, y, and z axes.
-  has_scale := false;
-  scale     := float.[1, 1, 1];
-  // The node’s translation along the x, y, and z axes.
-  has_translation := false;
-  translation     := float.[0, 0, 0];
-  // The weights of the instantiated morph target.
-  // The number of array elements must match the number of morph targets
-  // of the referenced mesh. When defined, mesh mush also be defined.
-  weights := -1;
-  //The index of the light referenced by this node.
-  light   := -1;
+  
+  light := -1; // The index of the light referenced by this node. :LightExtension
 }
 
 // A buffer points to binary geometry, animation, or skins.
@@ -1038,6 +1049,8 @@ GLTF_Texture :: struct {
 GLTF_Image :: struct {
   // The URI (or IRI) of the image.
   uri : string;
+  // Optional, user-defined and not necessarily unique.
+  name : string;
   // The image’s media type.
   // This field must be defined when bufferView is defined.
   mime_type : string;
@@ -1277,6 +1290,8 @@ GLTF_Camera :: struct {
     orthographic : Orthographic;
   };
 }
+
+// Types specific to the KHR_lights_punctual extension. :LightExtension
 
 // Specifies the light type.
 GLTF_Light_Type :: enum {
