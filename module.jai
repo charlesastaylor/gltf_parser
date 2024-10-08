@@ -827,9 +827,9 @@ GLTF_Node :: struct {
   //
 
   // Matrix, rotation, etc are optional in spec. So we can tell if they were present or not we have bools.
-  has_matrix := false;
-  has_rotation := false;
-  has_scale := false;
+  has_matrix      := false;
+  has_rotation    := false;
+  has_scale       := false;
   has_translation := false;
 
   parent := -1; // The index of the node's parent. A node is called a root node when it doesn’t have a parent.
