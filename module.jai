@@ -79,16 +79,19 @@ gltf_parse_string :: (gltf_buffer: string) -> GLTF_Data {
 
     rotation, has_rotation := get_array(node_parsed, "rotation");
     if has_rotation {
+      node.has_rotation = true;
       for val: rotation node.rotation[it_index] = parse_float(val);
     }
 
     scale, has_scale := get_array(node_parsed, "scale");
     if has_scale {
+      node.has_scale = true;
       for val: scale node.scale[it_index] = parse_float(val);
     }
 
     translation, has_trans := get_array(node_parsed, "translation");
     if has_trans {
+      node.has_translation = true;
       for val: translation node.translation[it_index] = parse_float(val);
     }
 
