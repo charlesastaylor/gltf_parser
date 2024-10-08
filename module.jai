@@ -796,41 +796,39 @@ read_buffer_from_accessor :: (gltf_data: *GLTF_Data, accessor: GLTF_Accessor, li
 // When a node is targeted for animation, referenced by
 // an animation.channel.target, matrix must not be present.
 GLTF_Node :: struct {
-  // The user-defined name of this object.
-  name : string;
-  // The index of the node's parent.
-  // A node is called a root node when it doesn’t have a parent.
-  parent := -1;
+  //
+  // Members that are part of spec
+  //
+
+  camera := -1;       // The index of the camera referenced by this node.
+  children: [..] int; // The indices of this node’s children.
+  skin := -1;         // The index of the skin referenced by this node.
+  matrix := float.[0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]; // A floating-point 4x4 transformation matrix stored in column-major order.
+  mesh := -1;         // The index of the mesh in this node.
+  rotation    := float.[0, 0, 0, 1]; // The node’s unit quaternion rotation in the order (x, y, z, w), where w is the scalar.
+  scale       := float.[1, 1, 1];    // The node’s non-uniform scale, given as the scaling factors along the x, y, and z axes.
+  translation := float.[0, 0, 0];    // The node’s translation along the x, y, and z axes.
+  // weights := -1;
+  name: string;        // The user-defined name of this object.
+  // extensions: JSON_Object
+  // extras: JSON_Object
+  
+
+  //
+  // Additional members added for convenience, or to handle extensions etc
+  //
+
+  // Matrix, rotation, etc are optional in spec. So we can tell if they were present or not we have bools.
+  has_matrix := false;
+  has_rotation := false;
+  has_scale := false;
+  has_translation := false;
+
+  parent := -1; // The index of the node's parent. A node is called a root node when it doesn’t have a parent.
   world_transform := Matrix4_Identity;
   local_transform := Matrix4_Identity;
-  // The index of the mesh in this node.
-  mesh   := -1;
-  // The index of the camera referenced by this node.
-  camera := -1;
-  // The index of the skin referenced by this node.
-  skin   := -1;
-  // The indices of this node’s children.
-  children : [..] int;
-  // A floating-point 4x4 transformation matrix stored in column-major order.
-  has_matrix := false;
-  matrix     := float.[0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
-  // The node’s unit quaternion rotation in the order (x, y, z, w),
-  // where w is the scalar.
-  has_rotation := false;
-  rotation     := float.[0, 0, 0, 1];
-  // The node’s non-uniform scale, given as the scaling factors
-  // along the x, y, and z axes.
-  has_scale := false;
-  scale     := float.[1, 1, 1];
-  // The node’s translation along the x, y, and z axes.
-  has_translation := false;
-  translation     := float.[0, 0, 0];
-  // The weights of the instantiated morph target.
-  // The number of array elements must match the number of morph targets
-  // of the referenced mesh. When defined, mesh mush also be defined.
-  weights := -1;
-  //The index of the light referenced by this node.
-  light   := -1;
+  
+  light := -1; // The index of the light referenced by this node. :LightExtension
 }
 
 // A buffer points to binary geometry, animation, or skins.
