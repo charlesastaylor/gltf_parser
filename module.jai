@@ -15,7 +15,7 @@ GLTF_Data :: struct {
   samplers     : [..] GLTF_Sampler;
   materials    : [..] GLTF_Material;
   cameras      : [..] GLTF_Camera;
-  lights       : [..] GLTF_Light;
+  lights       : [..] GLTF_Light; // :LightExtension 
   animations   : [..] GLTF_Animation;
 
   using meta : struct {
@@ -102,6 +102,7 @@ gltf_parse_string :: (gltf_buffer: string) -> GLTF_Data {
       for val: children array_add(*node.children, parse_int(val));
     }
 
+    // :LightExtension
     extensions, has_extension := get(node_parsed, "extensions", .OBJECT);
     if has_extension {
       khr_lights, has_khr_l := get(extensions, "KHR_lights_punctual", .OBJECT);
@@ -1283,6 +1284,8 @@ GLTF_Camera :: struct {
     orthographic : Orthographic;
   };
 }
+
+// Types specific to the KHR_lights_punctual extension. :LightExtension
 
 // Specifies the light type.
 GLTF_Light_Type :: enum {
